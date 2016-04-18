@@ -1,11 +1,13 @@
 private with Ada.Streams,
+		  Ada.Strings.Fixed,
 		  Ada.Strings.Hash,
 		  Ada.Text_IO,
 		  GNAT.Sockets;
 
 package body IRC.Server.Worker is
    use Ada.Text_IO,
-     GNAT.Sockets;
+     GNAT.Sockets,
+	 Ada.Strings.Fixed;
    
    -- We need a Hash function to make sure our Hashed_Maps.Map container can
    -- proeprly create the hash map. This function will just rely on the
@@ -17,6 +19,15 @@ package body IRC.Server.Worker is
    end Hash;
    
    
+   -- I'm trying to convert the Stream_Element_Array to a String,
+   -- but it seems like something is getting angry and the thread is dying???
+   function Stream_To_String (S : Ada.Streams.Stream_Element_Array) return String is
+	  String_View : String (0 .. S'Size);
+	  for String_View'Address use S'Address; 
+   begin 
+	  return String_View; 
+   end Stream_To_String; 
+   
    task body Worker is
       use Ada.Streams;
       
@@ -27,14 +38,51 @@ package body IRC.Server.Worker is
       end Serve;
       
       declare
-		 Channel : Stream_Access := Stream (Client_Sock);
-		 Data : Ada.Streams.Stream_Element_Array (1 .. 1);
-		 Offset : Ada.Streams.Stream_Element_Count;
+		 Channel  : Stream_Access := Stream (Client_Sock);
+		 Data     : Ada.Streams.Stream_Element_Array (1 .. 1);
+		 Offset   : Ada.Streams.Stream_Element_Count;
+		 
+		 U        : User;
+		 ServPass : Boolean := False;
+		 NickSent : Boolean := False;
+		 
+		 Msg      : String (1 .. 4096);
+		 Msg_Pos  : Natural := 0;
       begin
 		 while True loop
 			Ada.Streams.Read (Channel.all, Data, Offset);
-			exit when Offset = 0;
-			Put (Character'Val (Data (1)));
+			-- exit when Offset = 0;
+
+			-- Print recieved message
+			Msg := Stream_To_String(Data);
+			Put_Line (Msg);
+			
+			-- Start IRC processing
+			while not U.ConnRegd loop
+			   -- Get Index of next space
+			   Msg_Pos := Index(Source => Msg, Pattern => " ");
+			   
+			   Put_Line (Msg);
+			   -- If user sent nothing, skip
+			   if Msg_Pos > 0 then
+				  -- TODO: Check for password
+				  if (ServPass = True) and ( Msg (1 .. Msg_Pos - 1) = "PASS" ) then
+					 Put_Line ("Recieved PASS but we don't do anything with it yet.");
+				  end if;
+				  -- Check for nickname
+				  if Msg (1 .. Msg_Pos - 1) = "NICK" then
+					 --Msg_Pos := Index(Source => Msg (StrPos, Msg'Last, Pattern => " ");
+					 --U.Nickname := Msg()
+					 Put_Line ("Got nickname:" & Msg);
+					 
+					 NickSent := True;
+				  end if;
+				  -- Check for username
+				  if (NickSent = True) and ( Msg (1 .. Msg_Pos - 1) = "" ) then
+					 Put_Line ("Got username:" & Msg);
+				  end if;
+			   end if;
+			end loop;
 		 end loop;
 		 Put_Line (".. closing connection");
 		 Close_Socket (Client_Sock);

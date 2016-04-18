@@ -37,7 +37,7 @@ package body IRC.Server.Listener is
 
       --  A server marks a socket as willing to receive connect events.
       Listen_Socket (Server_Sock);
-      Put_Line ("Listener: Listening on port " &
+      Put_Line ("Listener: Listening on port" &
 		  Port_Type'Image(Server_Addr.Port));
 
       loop
@@ -50,7 +50,7 @@ package body IRC.Server.Listener is
 	 begin
 	    -- Accept connection
 	    Accept_Socket (Server_Sock, Client_Sock, Server_Addr);
-	    Put_Line ("Listener: Accepted connection on port " &
+	    Put_Line ("Listener: Accepted connection from port" & 
 			Port_Type'Image(Server_Addr.Port));
 	    -- Serve client and add thread to coordinator.
 	    W.all.Serve (Client_Sock);

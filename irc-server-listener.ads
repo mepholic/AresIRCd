@@ -1,7 +1,5 @@
-with Ada.Text_IO,
-  GNAT.Sockets,
-  IRC.Server.Worker,
-  Ada.Exceptions;
+with GNAT.Sockets,
+  IRC.Server.Worker;
 
 package IRC.Server.Listener is
    
