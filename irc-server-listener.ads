@@ -4,8 +4,8 @@ with GNAT.Sockets,
 package IRC.Server.Listener is
    
    task type Listener is
-      entry Start (Addr : GNAT.Sockets.Sock_Addr_Type);
-      --entry Stop;
+	  entry Start (Addr : GNAT.Sockets.Sock_Addr_Type);
+	  --entry Stop;
    end Listener;
-      
+   
 end IRC.Server.Listener;

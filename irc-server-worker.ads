@@ -10,7 +10,7 @@ with Ada.Containers,
 package IRC.Server.Worker is
    
    task type Worker is
-      entry Serve (Sock : GNAT.Sockets.Socket_Type);
+	  entry Serve (Sock : GNAT.Sockets.Socket_Type);
    end Worker;
    
    --- Declare a pointer type for pointers to Worker objects
@@ -33,15 +33,15 @@ package IRC.Server.Worker is
    
    function Stream_To_String (S : Ada.Streams.Stream_Element_Array) return String;
    
-   package Worker_Containers is new Ada.Containers.Indefinite_Hashed_Maps (Key_Type        => Ada.Task_Identification.Task_Id,
-																		   Element_Type    => Worker_Ptr,
-																		   Hash            => Hash,
+   package Worker_Containers is new Ada.Containers.Indefinite_Hashed_Maps (Key_Type		   => Ada.Task_Identification.Task_Id,
+																		   Element_Type	   => Worker_Ptr,
+																		   Hash			   => Hash,
 																		   Equivalent_Keys => Ada.Task_Identification."=");
    
    protected Coordinator is
-      procedure Track (Ptr : in Worker_Ptr);
+	  procedure Track (Ptr : in Worker_Ptr);
    private
-      Tasks : Worker_Containers.Map;
+	  Tasks : Worker_Containers.Map;
    end Coordinator;
    
 end IRC.Server.Worker;
