@@ -1,14 +1,16 @@
 private with Ada.Streams,
-     Ada.Strings.Unbounded,
+     Ada.Strings.Fixed,
      Ada.Strings.Hash,
      Ada.Text_IO,
-     Ada.Text_IO.Unbounded_IO,
-     GNAT.Sockets;
+     GNAT.Sockets,
+     Ada.Exceptions;
 
 package body IRC.Server.Worker is
    use GNAT.Sockets,
-       Ada.Strings.Unbounded;
-      
+       Ada.Strings.Fixed,
+       Ada.Text_IO,
+       Ada.Exceptions;
+   
    -- We need a Hash function to make sure our Hashed_Maps.Map container can
    -- proeprly create the hash map. This function will just rely on the
    -- Ada.Strings.Hash function and pass in the string representation of the
@@ -17,54 +19,54 @@ package body IRC.Server.Worker is
    begin
       return Ada.Strings.Hash (Ada.Task_Identification.Image (Key));
    end Hash;
-   
-   
-   -- I'm trying to convert the Stream_Element_Array to a String,
-   -- but it seems like something is getting angry and the thread is dying???
-   function Stream_To_String (S : Ada.Streams.Stream_Element_Array) return String is
-      String_View : String (0 .. S'Size);
-      for String_View'Address use S'Address; 
-   begin 
-      return String_View; 
-   end Stream_To_String; 
-   
+
+   -- Function to return debug.
+   procedure Debug (Message : String) is
+   begin
+      Put_Line ("Worker: " & Message);
+   end Debug;
+
+   -- A worker task to handle an IRC client.
    task body Worker is
       use Ada.Streams;
       
       Client_Sock : Socket_Type;
    begin
       accept Serve (Sock : Socket_Type) do
+         Debug ("Start called.");
          Client_Sock := Sock;
       end Serve;
       
       declare      
          Channel  : Stream_Access := Stream (Client_Sock);
-         --Data	  : Ada.Streams.Stream_Element_Array (1 .. 1);
-         --Offset	  : Ada.Streams.Stream_Element_Count;
-         
+
          U: User;
          ServPass : Boolean := False;
          NickSent : Boolean := False;
          
          NextChar : Character;
-         Msg	  : Unbounded_String;
+         Msg	  : String(1..2000000);
          Msg_Pos  : Natural := 0;
       begin
          while True loop
-            --Ada.Streams.Read (Channel.all, Data, Offset);
-            --exit when Offset = 0;
-            
             -- Read full line before processing protocol commands
-            Line_Loop :
-            loop
-               Character'Read (Channel, NextChar);
-               exit Line_Loop when NextChar = Ascii.LF;
-               Append(Msg, NextChar);
-            end loop Line_Loop;
+            declare
+               Loop_Index : Integer := 0;
+            begin
+               Line_Loop :
+               loop
+                  Loop_Index := Loop_Index + 1;
+                  Character'Read (Channel, NextChar);
+                  Msg(Loop_Index) := NextChar;
+                  exit Line_Loop when NextChar = Ascii.LF;
+               end loop Line_Loop;
+            end;
             
             -- Print line
-            Ada.Text_IO.Unbounded_IO.Put_Line (Msg);
-            
+            if Msg(1) /= Ascii.LF then
+               Debug (Msg);
+            end if;
+               
             -- Start IRC processing
             while not U.ConnRegd loop
                -- Get Index of next space
@@ -73,30 +75,33 @@ package body IRC.Server.Worker is
                -- If user sent nothing, skip
                if Msg_Pos > 0 then
                   -- TODO: Check for password
-                  if (ServPass = True) and ( Msg (1 .. Msg_Pos - 1) = "PASS" ) then
-                     Ada.Text_IO.Put_Line ("Recieved PASS but we don't do anything with it yet.");
+                  if (ServPass = True) and ( Msg = "PASS" ) then
+                     Debug ("Recieved PASS but we don't do anything with it yet.");
                   end if;
                   -- Check for nickname
                   if Msg (1 .. Msg_Pos - 1) = "NICK" then
                      --Msg_Pos := Index(Source => Msg (StrPos, Msg'Last, Pattern => " ");
                      --U.Nickname := Msg()
-                     Ada.Text_IO.Unbounded_IO.Put_Line ("Got nickname:" & Msg);
+                     Debug ("Got nickname:" & Msg);
                      
                      NickSent := True;
                   end if;
                   -- Check for username
                   if (NickSent = True) and ( Msg (1 .. Msg_Pos - 1) = "USER" ) then
-                     Ada.Text_IO.Unbounded_IO.Put_Line ("Got username:" & Msg);
+                     Debug ("Got username:" & Msg);
+                     U.ConnRegd := True;
                   end if;
                end if;
             end loop;
             
             -- Clear message buffer
-            Set_Unbounded_String (Msg, "");
+            Msg(1) := Ascii.LF;
          end loop;
-         Ada.Text_IO.Put_Line (".. closing connection");
+         Debug (".. closing connection");
          Close_Socket (Client_Sock);
       end;
+   exception when E : others =>
+         Debug ("Threw exception!" & Ascii.LF & Exception_Information (E));
    end Worker;
    
    
@@ -118,7 +123,7 @@ package body IRC.Server.Worker is
       end Last_Wish;
       
       procedure Track (Ptr : in Worker_Ptr) is
-         -- THe Task_Id for a task can be found in the Identity attribute,
+         -- The Task_Id for a task can be found in the Identity attribute,
          -- but since we're receiving a Worker_Ptr type, we first need to
          -- dereference it into a Worker again
          Key : constant Ada.Task_Identification.Task_Id := Ptr.all'Identity;
@@ -128,8 +133,8 @@ package body IRC.Server.Worker is
          
          -- Add our Worker pointer into our hash map to hold onto it for
          -- later
-         Tasks.Insert (Key		=> Key,
-                       New_Item => Ptr);
+         Tasks.Insert (Key      => Key,
+                       New_Item => Ptr );
          
          -- We need to set a task termination handler (introduced in Ada
          -- 2005) in order to get called when the Worker (W) terminates
