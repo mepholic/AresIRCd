@@ -34,11 +34,6 @@ package IRC.Server.Worker is
    -- Procedure to print Worker debug messages
    procedure Debug (Message : String);
    
-   -- Function to return the ending index of the next part of the message
-   function Next_Part (Msg           : String;
-                       Msg_Cursor    : Natural;
-                       New_Line_Only : Boolean := False) return Natural;
-   
    function Hash (Key : Ada.Task_Identification.Task_Id) return Ada.Containers.Hash_Type;
    
    package Worker_Containers is new Ada.Containers.Indefinite_Hashed_Maps (Key_Type        => Ada.Task_Identification.Task_Id,
