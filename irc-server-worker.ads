@@ -24,6 +24,7 @@ package IRC.Server.Worker is
       Nickname : String(1..80);
       Username : String(1..80);
       Hostname : String(1..80);
+      Servname : String(1..80);
       Realname : String(1..80);
    end record;
    
@@ -34,7 +35,9 @@ package IRC.Server.Worker is
    procedure Debug (Message : String);
    
    -- Function to return the ending index of the next part of the message
-   function Next_Part (Msg : String; Msg_Cursor : Natural) return Natural;
+   function Next_Part (Msg           : String;
+                       Msg_Cursor    : Natural;
+                       New_Line_Only : Boolean := False) return Natural;
    
    function Hash (Key : Ada.Task_Identification.Task_Id) return Ada.Containers.Hash_Type;
    

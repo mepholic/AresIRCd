@@ -23,19 +23,23 @@ package body IRC.Server.Worker is
    end Hash;
 
    -- Function to return the ending index of the next part of the message
-   function Next_Part (Msg : String; Msg_Cursor : Natural) return Natural is
+   function Next_Part (Msg           : String;
+                       Msg_Cursor    : Natural;
+                       New_Line_Only : Boolean := False) return Natural is
    begin
       -- If there is a space, split at the space.
       declare
-         LineFeed      : String(1..1);
          Char_Set      : Character_Set;
          Msg_Cursor_2  : Natural := 0;
       begin
-         LineFeed(1)   := Ascii.CR;
-         Char_Set      := To_Set (" " & LineFeed);
-         Msg_Cursor_2  := Index(Source => Msg, From => Msg_Cursor, Set => Char_Set) - 1;
-         
-         return Msg_Cursor_2;
+         if New_Line_Only then
+            Char_Set      := To_Set (Ascii.CR);
+         else
+            Char_Set      := To_Set (" " & Ascii.CR);
+         end if;
+
+         Msg_Cursor_2  := Index(Source => Msg, From => Msg_Cursor, Set => Char_Set);
+         return Msg_Cursor_2 - 1;
       end;
    end Next_Part;
    
@@ -67,13 +71,13 @@ package body IRC.Server.Worker is
          Ctr      : Long_Long_Integer := 0;
       begin
          Event_Loop:
-         while True loop
+         while True loop            
             declare
                Msg        : String(1..50000);
                Msg_Len    : Natural := 0;
                Msg_Curs_1 : Natural := 0;
                Msg_Curs_2 : Natural := 0;
-               Msg_Next_I : Natural := 0;
+               Msg_P_Len  : Natural := 0;
             begin
                
                -- Read in full lines before processing protocol commands
@@ -113,38 +117,105 @@ package body IRC.Server.Worker is
                         Debug ("Recieved PASS but we don't do anything with it yet.");
                      end if;
                      -- Check for nickname
+                     --      Command: NICK
+                     --   Parameters: <nickname> [ <hopcount> ]
                      if ( Msg (1 .. Msg_Curs_1 - 1) = "NICK" ) and ( not NickSent ) then
                         Debug ("Getting nickname.");
-
                         Msg_Curs_1 := Msg_Curs_1 + 1;
                         Msg_Curs_2 := Next_Part(Msg, Msg_Curs_1);
                         
-                        if Msg_Curs_2 = 0 then
-                           Debug ("I don't know what you did, and you're probably about to segfault.");
+                        Msg_P_Len := Msg_Curs_2 - Msg_Curs_1 + 1;
+
+                        if Msg_P_Len > 0 then
+                           U.Nickname(1..Msg_P_Len) := Msg(Msg_Curs_1..Msg_Curs_2);
+                           Debug ("Got nickname: " & U.Nickname);
+                        else
+                           Debug ("Got invalid nickname!");
+                           goto Next_Event;
                         end if;
-                        
-                        --Debug ("Positions: " & Ascii.LF & "1: " & Natural'Image(Msg_Curs_1) & Ascii.LF & "2: " & Natural'Image(Msg_Curs_2));
-                        
-                        Msg_Next_I := Msg_Curs_2 - Msg_Curs_1 + 1;
-                        U.Nickname(1..Msg_Next_I) := Msg(Msg_Curs_1..Msg_Curs_2);
-                        Debug ("Got nickname: " & U.Nickname);
                         
                         NickSent := True;
                      end if;
                      -- Check for username
+                     --      Command: USER
+                     --   Parameters: <username> <hostname> <servername> <realname>
                      if ( NickSent = True ) and ( Msg (1 .. Msg_Curs_1 - 1) = "USER" ) then
-                        Debug ("Getting username.");
                         
+                        -- Extract username
+                        Debug ("Getting username.");
                         Msg_Curs_1 := Msg_Curs_1 + 1;
                         Msg_Curs_2 := Next_Part(Msg, Msg_Curs_1);
                         
-                        if Msg_Curs_2 = 0 then
-                           Debug ("I don't know what you did, and you're probably about to segfault.");
+                        Msg_P_Len := Msg_Curs_2 - Msg_Curs_1 + 1;
+
+                        if Msg_P_Len > 0 then
+                           U.Username(1..Msg_P_Len) := Msg(Msg_Curs_1..Msg_Curs_2);
+                           Debug ("Got username: " & U.Username);
+                        else
+                           Debug ("Got invalid username!");
+                           goto Next_Event;
                         end if;
                         
-                        Msg_Next_I := Msg_Curs_2 - Msg_Curs_1 + 1;
-                        U.Username(1..Msg_Next_I) := Msg(Msg_Curs_1..Msg_Curs_2);
-                        Debug ("Got username: " & U.Username);
+                        Msg_Curs_2 := Msg_Curs_2 + 1;
+                        
+                        -- Extract hostname
+                        Debug ("Getting hostname.");
+                        Msg_Curs_1 := Msg_Curs_2 + 1;
+                        Msg_Curs_2 := Next_Part(Msg, Msg_Curs_1);
+                        
+                        Msg_P_Len := Msg_Curs_2 - Msg_Curs_1 + 1;
+
+                        if Msg_P_Len >= 0 then
+                           U.Hostname(1..Msg_P_Len) := Msg(Msg_Curs_1..Msg_Curs_2);
+                        
+                           Debug ("Got hostname: " & U.Hostname);
+                        else
+                           Debug ("Got invalid hostname!");
+                           goto Next_Event;
+                        end if;
+                        
+                        Msg_Curs_2 := Msg_Curs_2 + 1;
+                        
+                        -- Extract servname
+                        Debug ("Getting servname.");
+                        Msg_Curs_1 := Msg_Curs_2 + 1;
+                        Msg_Curs_2 := Next_Part(Msg, Msg_Curs_1);
+                        
+                        Msg_P_Len := Msg_Curs_2 - Msg_Curs_1 + 1;
+
+                        if Msg_P_Len >= 0 then
+                           U.Servname(1..Msg_P_Len) := Msg(Msg_Curs_1..Msg_Curs_2);
+                        
+                           Debug ("Got servname: " & U.Servname);
+                        else
+                           Debug ("Got invalid servname!");
+                           goto Next_Event;
+                        end if;
+                        
+                        Msg_Curs_2 := Msg_Curs_2 + 1;
+                        
+                        -- Extract realname
+                        Debug ("Getting realname.");
+                        Msg_Curs_1 := Msg_Curs_2 + 1;
+                        Msg_Curs_2 := Next_Part(Msg, Msg_Curs_1, True);
+                        
+                        if Msg(Msg_Curs_1) = Ascii.Colon then
+                           -- We don't want to record the : as part of the realname
+                           Msg_Curs_1 := Msg_Curs_1 + 1;
+                        end if;
+                        
+                        Msg_P_Len := Msg_Curs_2 - Msg_Curs_1 + 1;
+
+                        if Msg_P_Len >= 0 then
+                           U.Realname(1..Msg_P_Len) := Msg(Msg_Curs_1..Msg_Curs_2);
+                        
+                           Debug ("Got realname: " & U.Realname);
+                        else
+                           Debug ("Got invalid realname!");
+                           goto Next_Event;
+                        end if;
+                        
+                        Msg_Curs_2 := Msg_Curs_2 + 1;
                         
                         U.ConnRegd := True;
                      end if;
@@ -154,6 +225,7 @@ package body IRC.Server.Worker is
                   null;
                end if;
                
+               <<Next_Event>>
                Ctr := Ctr + 1;
                Debug ("Client message number: " & Long_Long_Integer'Image(Ctr));
             end;
