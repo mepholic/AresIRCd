@@ -40,14 +40,17 @@ package body IRC.Server.Worker is
       declare      
          Channel  : Stream_Access := Stream (Client_Sock);
 
-         U: User;
+         U        : User;
          ServPass : Boolean := False;
          NickSent : Boolean := False;
          NextChar : Character;
+         
+         Ctr      : Long_Long_Integer := 0;
       begin
+         Event_Loop:
          while True loop
             declare
-               Msg	  : String(1..500000);
+               Msg	  : String(1..50000);
                Msg_Len    : Natural := 0;
                Msg_Pos    : Natural := 0;
             begin
@@ -59,7 +62,7 @@ package body IRC.Server.Worker is
                   Line_Loop :
                   loop
                      Loop_Index := Loop_Index + 1;
-                     Character'Read (Channel, NextChar);
+                     NextChar := Character'Input (Channel);
                      Msg(Loop_Index) := NextChar;
                      exit Line_Loop when NextChar = Ascii.LF;
                      Msg_Len := Msg_Len + 1;
@@ -68,11 +71,17 @@ package body IRC.Server.Worker is
                
                -- Print line
                if Msg(1) /= Ascii.LF then
-                  Debug ( Msg(1..Msg_Len) );
+                  Debug ( "Client message: " & Msg(1..Msg_Len) );
+               end if;
+               
+               -- Quit if the client qants to
+               if Msg(1..4) = "QUIT" then
+                  Debug ("Client quit.");
+                  exit Event_Loop;
                end if;
                
                -- Start IRC processing
-               while not U.ConnRegd loop
+               if not U.ConnRegd then
                   -- Get Index of next space
                   Msg_Pos := Index(Source => Msg, Pattern => " ");
                   
@@ -96,12 +105,15 @@ package body IRC.Server.Worker is
                         U.ConnRegd := True;
                      end if;
                   end if;
-               end loop;
-            
-               -- Clear message buffer
-               Msg(1) := Ascii.LF;
+               else
+                  -- No-op for now
+                  null;
+               end if;
+               
+               Ctr := Ctr + 1;
+               Debug ("Client message number: " & Long_Long_Integer'Image(Ctr));
             end;
-         end loop;
+         end loop Event_Loop;
          Debug (".. closing connection");
          Close_Socket (Client_Sock);
       end;
