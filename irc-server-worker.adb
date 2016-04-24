@@ -43,59 +43,64 @@ package body IRC.Server.Worker is
          U: User;
          ServPass : Boolean := False;
          NickSent : Boolean := False;
-         
          NextChar : Character;
-         Msg	  : String(1..2000000);
-         Msg_Pos  : Natural := 0;
       begin
          while True loop
-            -- Read full line before processing protocol commands
             declare
-               Loop_Index : Integer := 0;
+               Msg	  : String(1..500000);
+               Msg_Len    : Natural := 0;
+               Msg_Pos    : Natural := 0;
             begin
-               Line_Loop :
-               loop
-                  Loop_Index := Loop_Index + 1;
-                  Character'Read (Channel, NextChar);
-                  Msg(Loop_Index) := NextChar;
-                  exit Line_Loop when NextChar = Ascii.LF;
-               end loop Line_Loop;
-            end;
-            
-            -- Print line
-            if Msg(1) /= Ascii.LF then
-               Debug (Msg);
-            end if;
                
-            -- Start IRC processing
-            while not U.ConnRegd loop
-               -- Get Index of next space
-               Msg_Pos := Index(Source => Msg, Pattern => " ");
+               -- Read in full lines before processing protocol commands
+               declare
+                  Loop_Index : Integer := 0;
+               begin
+                  Line_Loop :
+                  loop
+                     Loop_Index := Loop_Index + 1;
+                     Character'Read (Channel, NextChar);
+                     Msg(Loop_Index) := NextChar;
+                     exit Line_Loop when NextChar = Ascii.LF;
+                     Msg_Len := Msg_Len + 1;
+                  end loop Line_Loop;
+               end;
                
-               -- If user sent nothing, skip
-               if Msg_Pos > 0 then
-                  -- TODO: Check for password
-                  if (ServPass = True) and ( Msg = "PASS" ) then
-                     Debug ("Recieved PASS but we don't do anything with it yet.");
-                  end if;
-                  -- Check for nickname
-                  if Msg (1 .. Msg_Pos - 1) = "NICK" then
-                     --Msg_Pos := Index(Source => Msg (StrPos, Msg'Last, Pattern => " ");
-                     --U.Nickname := Msg()
-                     Debug ("Got nickname:" & Msg);
-                     
-                     NickSent := True;
-                  end if;
-                  -- Check for username
-                  if (NickSent = True) and ( Msg (1 .. Msg_Pos - 1) = "USER" ) then
-                     Debug ("Got username:" & Msg);
-                     U.ConnRegd := True;
-                  end if;
+               -- Print line
+               if Msg(1) /= Ascii.LF then
+                  Debug ( Msg(1..Msg_Len) );
                end if;
-            end loop;
+               
+               -- Start IRC processing
+               while not U.ConnRegd loop
+                  -- Get Index of next space
+                  Msg_Pos := Index(Source => Msg, Pattern => " ");
+                  
+                  -- If user sent nothing, skip
+                  if Msg_Pos > 0 then
+                     -- TODO: Check for password
+                     if (ServPass = True) and ( Msg = "PASS" ) then
+                        Debug ("Recieved PASS but we don't do anything with it yet.");
+                     end if;
+                     -- Check for nickname
+                     if ( Msg (1 .. Msg_Pos - 1) = "NICK" ) and ( not NickSent ) then
+                        --Msg_Pos := Index(Source => Msg ( Msg_Len), Pattern => " ");
+                        --U.Nickname := Msg()
+                        Debug ("Got nickname:" & Msg(1..Msg_Len));
+                        
+                        NickSent := True;
+                     end if;
+                     -- Check for username
+                     if ( NickSent = True ) and ( Msg (1 .. Msg_Pos - 1) = "USER" ) then
+                        Debug ("Got username:" & Msg(1..Msg_Len));
+                        U.ConnRegd := True;
+                     end if;
+                  end if;
+               end loop;
             
-            -- Clear message buffer
-            Msg(1) := Ascii.LF;
+               -- Clear message buffer
+               Msg(1) := Ascii.LF;
+            end;
          end loop;
          Debug (".. closing connection");
          Close_Socket (Client_Sock);
