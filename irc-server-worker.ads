@@ -9,9 +9,9 @@ with Ada.Containers,
 
 package IRC.Server.Worker is
    
-   -- A task to handle a Worker.
+-- A task to handle a Worker.
    task type Worker is
-      -- Start a task to serve a worker.
+   -- Start a task to serve a worker.
       entry Serve (Sock : GNAT.Sockets.Socket_Type);
    end Worker;
    
@@ -30,9 +30,11 @@ package IRC.Server.Worker is
    -- Procedure to properly deallocate a heap-allocated Worker task
    procedure Free_Worker is new Ada.Unchecked_Deallocation (Object => Worker,
                                                             Name   => Worker_Ptr );
-   
    -- Procedure to print Worker debug messages
    procedure Debug (Message : String);
+   
+   -- Function to return the ending index of the next part of the message
+   function Next_Part (Msg : String; Msg_Cursor : Natural) return Natural;
    
    function Hash (Key : Ada.Task_Identification.Task_Id) return Ada.Containers.Hash_Type;
    

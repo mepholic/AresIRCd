@@ -22,6 +22,23 @@ package body IRC.Server.Worker is
       return Ada.Strings.Hash (Ada.Task_Identification.Image (Key));
    end Hash;
 
+   -- Function to return the ending index of the next part of the message
+   function Next_Part (Msg : String; Msg_Cursor : Natural) return Natural is
+   begin
+      -- If there is a space, split at the space.
+      declare
+         LineFeed      : String(1..1);
+         Char_Set      : Character_Set;
+         Msg_Cursor_2  : Natural := 0;
+      begin
+         LineFeed(1)   := Ascii.CR;
+         Char_Set      := To_Set (" " & LineFeed);
+         Msg_Cursor_2  := Index(Source => Msg, From => Msg_Cursor, Set => Char_Set) - 1;
+         
+         return Msg_Cursor_2;
+      end;
+   end Next_Part;
+   
    -- Function to return debug.
    procedure Debug (Message : String) is
    begin
@@ -52,10 +69,11 @@ package body IRC.Server.Worker is
          Event_Loop:
          while True loop
             declare
-               Msg	       : String(1..50000);
+               Msg        : String(1..50000);
                Msg_Len    : Natural := 0;
                Msg_Curs_1 : Natural := 0;
                Msg_Curs_2 : Natural := 0;
+               Msg_Next_I : Natural := 0;
             begin
                
                -- Read in full lines before processing protocol commands
@@ -97,38 +115,35 @@ package body IRC.Server.Worker is
                      -- Check for nickname
                      if ( Msg (1 .. Msg_Curs_1 - 1) = "NICK" ) and ( not NickSent ) then
                         Debug ("Getting nickname.");
-                        -- If there is a space, split at the space.
-                        declare
-                           LineFeed : String(1..1);
-                           CharSet  : Character_Set;
-                        begin
-                           LineFeed(1) := Ascii.CR;
-                           CharSet     := To_Set (" " & LineFeed);
-                           Msg_Curs_1 := Msg_Curs_1 + 1;
-                           Msg_Curs_2 := Index(Source => Msg, From => Msg_Curs_1, Set => CharSet) - 1;
+
+                        Msg_Curs_1 := Msg_Curs_1 + 1;
+                        Msg_Curs_2 := Next_Part(Msg, Msg_Curs_1);
                         
-                           if Msg_Curs_2 = 0 then
-                              Debug ("I don't know what you did, and you're probably about to segfault.");
-                           end if;
-                        end;
+                        if Msg_Curs_2 = 0 then
+                           Debug ("I don't know what you did, and you're probably about to segfault.");
+                        end if;
                         
-                        Debug ("Positions: " & Ascii.LF & "1: " & Natural'Image(Msg_Curs_1) & Ascii.LF & "2: " & Natural'Image(Msg_Curs_2));
+                        --Debug ("Positions: " & Ascii.LF & "1: " & Natural'Image(Msg_Curs_1) & Ascii.LF & "2: " & Natural'Image(Msg_Curs_2));
                         
-                        U.Nickname(1..(Msg_Curs_2 - Msg_Curs_1 + 1)) := Msg(Msg_Curs_1..Msg_Curs_2);
+                        Msg_Next_I := Msg_Curs_2 - Msg_Curs_1 + 1;
+                        U.Nickname(1..Msg_Next_I) := Msg(Msg_Curs_1..Msg_Curs_2);
                         Debug ("Got nickname: " & U.Nickname);
                         
                         NickSent := True;
                      end if;
                      -- Check for username
                      if ( NickSent = True ) and ( Msg (1 .. Msg_Curs_1 - 1) = "USER" ) then
-                        -- If there is a space, split at the space.
-                        Msg_Curs_2 := Index(Source => Msg, From => Msg_Curs_1, Pattern => " ");
+                        Debug ("Getting username.");
+                        
+                        Msg_Curs_1 := Msg_Curs_1 + 1;
+                        Msg_Curs_2 := Next_Part(Msg, Msg_Curs_1);
                         
                         if Msg_Curs_2 = 0 then
-                           Msg_Curs_2 := Msg'Last - 1;
+                           Debug ("I don't know what you did, and you're probably about to segfault.");
                         end if;
                         
-                        U.Username := Msg(Msg_Curs_1..Msg_Curs_2);
+                        Msg_Next_I := Msg_Curs_2 - Msg_Curs_1 + 1;
+                        U.Username(1..Msg_Next_I) := Msg(Msg_Curs_1..Msg_Curs_2);
                         Debug ("Got username: " & U.Username);
                         
                         U.ConnRegd := True;
