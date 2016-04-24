@@ -31,7 +31,7 @@ package body IRC.Server.Listener is
       --  Create the socket
       Debug ("Creating socket.");
       Create_Socket (Server_Sock);
-  
+      
       --  Allow reuse of local addresses.
       Debug ("Setting socket options.");
       Set_Socket_Option (Server_Sock, Socket_Level, (Reuse_Address, True));
@@ -44,7 +44,7 @@ package body IRC.Server.Listener is
       Debug ("About to listen.");
       Listen_Socket (Server_Sock);
       Debug ("Listening on port" &
-                  Port_Type'Image(Server_Addr.Port));
+               Port_Type'Image(Server_Addr.Port));
       
       loop
          -- Wait for clients
@@ -58,7 +58,7 @@ package body IRC.Server.Listener is
             IRC.Server.Listener.Debug ("Waiting for new client connection.");
             Accept_Socket (Server_Sock, Client_Sock, Server_Addr);
             IRC.Server.Listener.Debug ("Accepted connection from port" & 
-                        Port_Type'Image(Server_Addr.Port));
+                                         Port_Type'Image(Server_Addr.Port));
             -- Serve client and add thread to coordinator.
             W.all.Serve (Client_Sock);
             Coordinator.Track (W);

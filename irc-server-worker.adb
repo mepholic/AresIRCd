@@ -1,11 +1,11 @@
 private with Ada.Streams,
-		  Ada.Strings.Fixed,
-		  Ada.Strings.Hash,
-		  Ada.Strings.Maps,
-		  Ada.Text_IO,
-		  GNAT.Sockets,
-		  Ada.Exceptions,
-		  IRC.Proto;
+     Ada.Strings.Fixed,
+     Ada.Strings.Hash,
+     Ada.Strings.Maps,
+     Ada.Text_IO,
+     GNAT.Sockets,
+     Ada.Exceptions,
+     IRC.Proto;
 
 package body IRC.Server.Worker is
    use GNAT.Sockets,
@@ -28,7 +28,7 @@ package body IRC.Server.Worker is
    begin
       Put_Line ("Worker: " & Message);
    end Debug;
-
+   
    -- A worker task to handle an IRC client.
    task body Worker is
       use Ada.Streams;
@@ -42,7 +42,7 @@ package body IRC.Server.Worker is
       
       declare      
          Channel  : Stream_Access := Stream (Client_Sock);
-
+         
          U        : User;
          ServPass : Boolean := False;
          NickSent : Boolean := False;
@@ -55,7 +55,7 @@ package body IRC.Server.Worker is
             declare
                Msg        : String(1..50000);
                Msg_Len    : Natural := 0;
-			   package P is new IRC.Proto();
+               package P is new IRC.Proto();
             begin
                
                -- Read in full lines before processing protocol commands
@@ -82,7 +82,7 @@ package body IRC.Server.Worker is
                   Debug ("Client quit.");
                   exit Event_Loop;
                end if;
-               			   
+               
                -- Start IRC processing
                if not U.ConnRegd then
                   
@@ -98,16 +98,16 @@ package body IRC.Server.Worker is
                      if ( Msg (1 .. P.Msg_Cursor_1 - 1) = "NICK" ) and ( not NickSent ) then
                         Debug ("Getting nickname.");
                         
-						U.Nickname(1..P.Msg_Part_Len) := P.Next_Part(Msg);
+                        U.Nickname(1..P.Msg_Part_Len) := P.Next_Part(Msg);
                         Debug ("Got nickname: " & U.Nickname);
-                                                
+                        
                         NickSent := True;
                      end if;
                      -- Check for username
                      --      Command: USER
                      --   Parameters: <username> <hostname> <servername> <realname>
                      if ( NickSent = True ) and ( Msg (1 .. P.Msg_Cursor_1 - 1) = "USER" ) then
-                                                
+                        
                         U.ConnRegd := True;
                      end if;
                   end if;
@@ -147,9 +147,9 @@ package body IRC.Server.Worker is
       end Last_Wish;
       
       procedure Track (Ptr : in Worker_Ptr) is
-      -- The Task_Id for a task can be found in the Identity attribute,
-      -- but since we're receiving a Worker_Ptr type, we first need to
-      -- dereference it into a Worker again
+         -- The Task_Id for a task can be found in the Identity attribute,
+         -- but since we're receiving a Worker_Ptr type, we first need to
+         -- dereference it into a Worker again
          Key : constant Ada.Task_Identification.Task_Id := Ptr.all'Identity;
       begin
          

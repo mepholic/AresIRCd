@@ -9,9 +9,9 @@ with Ada.Containers,
 
 package IRC.Server.Worker is
    
--- A task to handle a Worker.
+   -- A task to handle a Worker.
    task type Worker is
-   -- Start a task to serve a worker.
+      -- Start a task to serve a worker.
       entry Serve (Sock : GNAT.Sockets.Socket_Type);
    end Worker;
    
