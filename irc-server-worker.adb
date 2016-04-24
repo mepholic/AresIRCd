@@ -1,6 +1,7 @@
 private with Ada.Streams,
      Ada.Strings.Fixed,
      Ada.Strings.Hash,
+     Ada.Strings.Maps,
      Ada.Text_IO,
      GNAT.Sockets,
      Ada.Exceptions;
@@ -8,6 +9,7 @@ private with Ada.Streams,
 package body IRC.Server.Worker is
    use GNAT.Sockets,
        Ada.Strings.Fixed,
+       Ada.Strings.Maps,
        Ada.Text_IO,
        Ada.Exceptions;
    
@@ -50,9 +52,10 @@ package body IRC.Server.Worker is
          Event_Loop:
          while True loop
             declare
-               Msg	  : String(1..50000);
+               Msg	       : String(1..50000);
                Msg_Len    : Natural := 0;
-               Msg_Pos    : Natural := 0;
+               Msg_Curs_1 : Natural := 0;
+               Msg_Curs_2 : Natural := 0;
             begin
                
                -- Read in full lines before processing protocol commands
@@ -83,25 +86,51 @@ package body IRC.Server.Worker is
                -- Start IRC processing
                if not U.ConnRegd then
                   -- Get Index of next space
-                  Msg_Pos := Index(Source => Msg, Pattern => " ");
+                  Msg_Curs_1 := Index(Source => Msg, Pattern => " ");
                   
                   -- If user sent nothing, skip
-                  if Msg_Pos > 0 then
+                  if Msg_Curs_1 > 0 then
                      -- TODO: Check for password
                      if (ServPass = True) and ( Msg = "PASS" ) then
                         Debug ("Recieved PASS but we don't do anything with it yet.");
                      end if;
                      -- Check for nickname
-                     if ( Msg (1 .. Msg_Pos - 1) = "NICK" ) and ( not NickSent ) then
-                        --Msg_Pos := Index(Source => Msg ( Msg_Len), Pattern => " ");
-                        --U.Nickname := Msg()
-                        Debug ("Got nickname:" & Msg(1..Msg_Len));
+                     if ( Msg (1 .. Msg_Curs_1 - 1) = "NICK" ) and ( not NickSent ) then
+                        Debug ("Getting nickname.");
+                        -- If there is a space, split at the space.
+                        declare
+                           LineFeed : String(1..1);
+                           CharSet  : Character_Set;
+                        begin
+                           LineFeed(1) := Ascii.CR;
+                           CharSet     := To_Set (" " & LineFeed);
+                           Msg_Curs_1 := Msg_Curs_1 + 1;
+                           Msg_Curs_2 := Index(Source => Msg, From => Msg_Curs_1, Set => CharSet) - 1;
+                        
+                           if Msg_Curs_2 = 0 then
+                              Debug ("I don't know what you did, and you're probably about to segfault.");
+                           end if;
+                        end;
+                        
+                        Debug ("Positions: " & Ascii.LF & "1: " & Natural'Image(Msg_Curs_1) & Ascii.LF & "2: " & Natural'Image(Msg_Curs_2));
+                        
+                        U.Nickname(1..(Msg_Curs_2 - Msg_Curs_1 + 1)) := Msg(Msg_Curs_1..Msg_Curs_2);
+                        Debug ("Got nickname: " & U.Nickname);
                         
                         NickSent := True;
                      end if;
                      -- Check for username
-                     if ( NickSent = True ) and ( Msg (1 .. Msg_Pos - 1) = "USER" ) then
-                        Debug ("Got username:" & Msg(1..Msg_Len));
+                     if ( NickSent = True ) and ( Msg (1 .. Msg_Curs_1 - 1) = "USER" ) then
+                        -- If there is a space, split at the space.
+                        Msg_Curs_2 := Index(Source => Msg, From => Msg_Curs_1, Pattern => " ");
+                        
+                        if Msg_Curs_2 = 0 then
+                           Msg_Curs_2 := Msg'Last - 1;
+                        end if;
+                        
+                        U.Username := Msg(Msg_Curs_1..Msg_Curs_2);
+                        Debug ("Got username: " & U.Username);
+                        
                         U.ConnRegd := True;
                      end if;
                   end if;
@@ -140,9 +169,9 @@ package body IRC.Server.Worker is
       end Last_Wish;
       
       procedure Track (Ptr : in Worker_Ptr) is
-         -- The Task_Id for a task can be found in the Identity attribute,
-         -- but since we're receiving a Worker_Ptr type, we first need to
-         -- dereference it into a Worker again
+      -- The Task_Id for a task can be found in the Identity attribute,
+      -- but since we're receiving a Worker_Ptr type, we first need to
+      -- dereference it into a Worker again
          Key : constant Ada.Task_Identification.Task_Id := Ptr.all'Identity;
       begin
          
