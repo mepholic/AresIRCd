@@ -21,27 +21,6 @@ package body IRC.Server.Worker is
    begin
       return Ada.Strings.Hash (Ada.Task_Identification.Image (Key));
    end Hash;
-
-   -- Function to return the ending index of the next part of the message
-   function Next_Part (Msg           : String;
-                       Msg_Cursor    : Natural;
-                       New_Line_Only : Boolean := False) return Natural is
-   begin
-      -- If there is a space, split at the space.
-      declare
-         Char_Set      : Character_Set;
-         Msg_Cursor_2  : Natural := 0;
-      begin
-         if New_Line_Only then
-            Char_Set      := To_Set (Ascii.CR);
-         else
-            Char_Set      := To_Set (" " & Ascii.CR);
-         end if;
-
-         Msg_Cursor_2  := Index(Source => Msg, From => Msg_Cursor, Set => Char_Set);
-         return Msg_Cursor_2 - 1;
-      end;
-   end Next_Part;
    
    -- Function to return debug.
    procedure Debug (Message : String) is
