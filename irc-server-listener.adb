@@ -63,10 +63,12 @@ package body IRC.Server.Listener is
             W.all.Serve (Client_Sock);
             Coordinator.Track (W);
          end;
+         
+         accept Stop do
+            Close_Socket (Server_Sock);
+         end Stop;
       end loop;
       
-      --accept Stop;
-      --Close_Socket (Server_Sock);
       
    exception when E : others =>
          Debug ("Threw exception!" & Ascii.LF & Exception_Information (E));

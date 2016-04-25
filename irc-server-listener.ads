@@ -10,6 +10,7 @@ package IRC.Server.Listener is
    task type Listener is
       -- Start a listener task to listen for connections from IRC clients or servers.
       entry Start (Addr : GNAT.Sockets.Sock_Addr_Type);
+      entry Stop;
    end Listener;
    
 end IRC.Server.Listener;

@@ -5,7 +5,8 @@ with Ada.Containers,
      Ada.Task_Termination,
      Ada.Unchecked_Deallocation,
      GNAT.Sockets,
-     ADA.Streams;
+     ADA.Streams,
+     IRC.Proto;
 
 package IRC.Server.Worker is
    
@@ -28,12 +29,14 @@ package IRC.Server.Worker is
       Realname : String(1..80);
    end record;
    
+   type User_Ref is access all User;
+   
    -- Procedure to properly deallocate a heap-allocated Worker task
    procedure Free_Worker is new Ada.Unchecked_Deallocation (Object => Worker,
                                                             Name   => Worker_Ptr );
    -- Procedure to print Worker debug messages
    procedure Debug (Message : String);
-   
+ 
    function Hash (Key : Ada.Task_Identification.Task_Id) return Ada.Containers.Hash_Type;
    
    package Worker_Containers is new Ada.Containers.Indefinite_Hashed_Maps (Key_Type        => Ada.Task_Identification.Task_Id,

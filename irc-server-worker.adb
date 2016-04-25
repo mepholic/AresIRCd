@@ -23,7 +23,7 @@ package body IRC.Server.Worker is
       return Ada.Strings.Hash (Ada.Task_Identification.Image (Key));
    end Hash;
    
-   -- Function to return debug.
+   -- Procedure to print debug.
    procedure Debug (Message : String) is
    begin
       Put_Line ("Worker: " & Message);
@@ -41,12 +41,12 @@ package body IRC.Server.Worker is
       end Serve;
       
       declare      
-         Channel  : Stream_Access := Stream (Client_Sock);
+         Channel   : Stream_Access := Stream (Client_Sock);
          
-         U        : User;
-         ServPass : Boolean := False;
-         NickSent : Boolean := False;
-         NextChar : Character;
+         U         : User;
+         Serv_Pass : Boolean := False;
+         Nick_Sent : Boolean := False;
+         Next_Char : Character;
          
          Ctr      : Long_Long_Integer := 0;
       begin
@@ -55,7 +55,7 @@ package body IRC.Server.Worker is
             declare
                Msg        : String(1..50000);
                Msg_Len    : Natural := 0;
-               package P is new IRC.Proto();
+               package Parser is new IRC.Proto;
             begin
                
                -- Read in full lines before processing protocol commands
@@ -64,57 +64,69 @@ package body IRC.Server.Worker is
                begin
                   Line_Loop :
                   loop
-                     Loop_Index := Loop_Index + 1;
-                     NextChar := Character'Input (Channel);
-                     Msg(Loop_Index) := NextChar;
-                     exit Line_Loop when NextChar = Ascii.LF;
-                     Msg_Len := Msg_Len + 1;
+                     Loop_Index := Loop_Index + 1;		-- Increment loop index
+                     Next_Char  := Character'Input (Channel);	-- Read next character
+                     Msg(Loop_Index) := Next_Char;		-- Append next character to message
+                     exit Line_Loop when Next_Char = Ascii.LF;	-- End loop if newline
+                     Msg_Len := Msg_Len + 1;			-- Increment message length
                   end loop Line_Loop;
+                  
+                  -- Let our parser know how long the message is
+                  Parser.Msg_Len := Msg_Len;
                end;
                
                -- Print line
-               if Msg(1) /= Ascii.LF then
-                  Debug ( "Client message: " & Msg(1..Msg_Len) );
-               end if;
+               Debug ( "Client message: " & Msg(Msg'First..Msg_Len) );
                
-               -- Quit if the client qants to
-               if Msg(1..4) = "QUIT" then
-                  Debug ("Client quit.");
-                  exit Event_Loop;
-               end if;
+               -- Get first part
+               Parser.First_Part(Msg);
                
-               -- Start IRC processing
-               if not U.ConnRegd then
+               Debug ( "Part: *" & Parser.Msg_Part_Str & "*" );
+               declare
+                  Command : String := Parser.Msg_Part_Str(1..Parser.Msg_Part_Len);
+               begin
+                  -- Quit if the client qants to
+                  if Command = "QUIT" then
+                     Parser.Next_Part(Msg         => Msg,
+                                      Empty_Valid => True,
+                                      Eat_Colon   => True,
+                                      To_End      => True);
+                     Debug ("Client quit: " & Parser.Msg_Part_Str);
+                     exit Event_Loop;
+                  end if;
                   
-                  -- If user sent nothing, skip
-                  if P.Msg_Cursor_1 > 0 then
+                  -- Start IRC processing
+                  if not U.ConnRegd then
+                     
                      -- TODO: Check for password
-                     if (ServPass = True) and ( Msg = "PASS" ) then
+                     if ( Command = "PASS" ) and (Serv_Pass = True) then
                         Debug ("Recieved PASS but we don't do anything with it yet.");
                      end if;
                      -- Check for nickname
                      --      Command: NICK
                      --   Parameters: <nickname> [ <hopcount> ]
-                     if ( Msg (1 .. P.Msg_Cursor_1 - 1) = "NICK" ) and ( not NickSent ) then
+                     if ( Command = "NICK" ) and ( not Nick_Sent ) then
                         Debug ("Getting nickname.");
                         
-                        U.Nickname(1..P.Msg_Part_Len) := P.Next_Part(Msg);
+                        -- Get nick
+                        Parser.Next_Part(Msg);
+                        U.Nickname(1..Parser.Msg_Part_Len) := Parser.Msg_Part_Str(1..Parser.Msg_Part_Len);
                         Debug ("Got nickname: " & U.Nickname);
                         
-                        NickSent := True;
+                        Nick_Sent := True;
                      end if;
                      -- Check for username
                      --      Command: USER
                      --   Parameters: <username> <hostname> <servername> <realname>
-                     if ( NickSent = True ) and ( Msg (1 .. P.Msg_Cursor_1 - 1) = "USER" ) then
+                     if ( Command = "USER" ) and ( Nick_Sent ) then
                         
                         U.ConnRegd := True;
                      end if;
+                  else
+                     -- No-op for now
+                     null;
                   end if;
-               else
-                  -- No-op for now
-                  null;
-               end if;
+               end;
                
                <<Next_Event>>
                Ctr := Ctr + 1;
