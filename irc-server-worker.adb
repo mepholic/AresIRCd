@@ -44,16 +44,18 @@ package body IRC.Server.Worker is
          Channel   : Stream_Access := Stream (Client_Sock);
          
          U         : User;
-         Serv_Pass : Boolean := False;
-         Nick_Sent : Boolean := False;
+         URef      : User_Ref := new User;
+         Serv_Pass : Boolean  := False;
+         Nick_Sent : Boolean  := False;
          Next_Char : Character;
          
-         Ctr      : Long_Long_Integer := 0;
+         Ctr       : Long_Long_Integer := 0;
       begin
+         --URef.all := U;
          Event_Loop:
          while True loop            
             declare
-               Msg        : String(1..50000);
+               Msg        : String(1..500000);
                Msg_Len    : Natural := 0;
                package Parser is new IRC.Proto;
             begin
@@ -106,11 +108,11 @@ package body IRC.Server.Worker is
                      --      Command: NICK
                      --   Parameters: <nickname> [ <hopcount> ]
                      if ( Command = "NICK" ) and ( not Nick_Sent ) then
-                        Debug ("Getting nickname.");
                         
                         -- Get nick
                         Parser.Next_Part(Msg);
-                        U.Nickname(1..Parser.Msg_Part_Len) := Parser.Msg_Part_Str(1..Parser.Msg_Part_Len);
+                        --Parser.Put_Part(URef.Username);
+                        U.Nickname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
                         Debug ("Got nickname: " & U.Nickname);
                         
                         Nick_Sent := True;
@@ -119,6 +121,28 @@ package body IRC.Server.Worker is
                      --      Command: USER
                      --   Parameters: <username> <hostname> <servername> <realname>
                      if ( Command = "USER" ) and ( Nick_Sent ) then
+                        
+                        -- Get username
+                        Parser.Next_Part(Msg);
+                        U.Username(1..Parser.Msg_Part_Len) := Parser.Get_Part;
+                        Debug ("Got username: " & U.Username);
+                        
+                        -- Get hostname
+                        Parser.Next_Part(Msg, True);
+                        U.Hostname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
+                        Debug ("Got hostname: " & U.Hostname);
+                                    
+                        -- Get servname
+                        Parser.Next_Part(Msg, True);
+                        U.Servname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
+                        Debug ("Got servname: " & U.Servname);
+                                    
+                        -- Get realname
+                        Parser.Next_Part(Msg       => Msg,
+                                         Eat_Colon => True,
+                                         To_End    => True);
+                        U.Realname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
+                        Debug ("Got realname: " & U.Realname);
                         
                         U.ConnRegd := True;
                      end if;

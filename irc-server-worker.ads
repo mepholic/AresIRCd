@@ -31,6 +31,7 @@ package IRC.Server.Worker is
    
    type User_Ref is access all User;
    
+   
    -- Procedure to properly deallocate a heap-allocated Worker task
    procedure Free_Worker is new Ada.Unchecked_Deallocation (Object => Worker,
                                                             Name   => Worker_Ptr );

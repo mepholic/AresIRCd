@@ -21,5 +21,8 @@ package IRC.Proto is
                          Empty_Valid : Boolean := False;
                          Eat_Colon   : Boolean := False;
                          To_End      : Boolean := False);
+
+   -- Function to get the last fetched part
+   function Get_Part return String;
    Bad : exception;
 end IRC.Proto;

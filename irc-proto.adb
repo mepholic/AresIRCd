@@ -63,11 +63,8 @@ package body IRC.Proto is
       if First_Pass then
          raise Bad;
       else
-         -- Set Cursor 2 to the index after the space after our last part
-         Msg_Cursor_2 := Msg_Cursor_1 + 1;
-         -- Set Cursor 1 to the same position as Cursor 2
-         Msg_Cursor_1 := Msg_Cursor_2;
-         Ada.Text_IO.Put_Line("IRC.Proto: First_Pass is false!");
+         Msg_Cursor_1 := Msg_Cursor_1 + 1;	-- Set Cursor 1 to the next index after it's current position
+         Msg_Cursor_2 := Msg_Cursor_1;		-- Set Cursor 2 to the same position as Cursor 2
       end if;
       
       -- Set Cursor 2 to the position of the next space or newline
@@ -83,14 +80,14 @@ package body IRC.Proto is
       Msg_Part_Len := Msg_Cursor_2 - Msg_Cursor_1;
       
       -- Debug
-      Ada.Text_IO.Put_Line("IRC.Proto : " & Ascii.LF &
-                             "Message : " & Msg & Ascii.LF &
-                             "Msg_Len : " & Natural'Image(Msg_Len) & Ascii.LF &
-                             "Cursor 1: " & Natural'Image(Msg_Cursor_1) & Ascii.LF &
-                             "Cursor 2: " & Natural'Image(Msg_Cursor_2) & Ascii.LF &
-                             "Part    : -" & Msg(Msg_Cursor_1..Msg_Cursor_1 + (Msg_Part_Len - 1)) & "-" & Ascii.LF &
-                             "Part_Len: " & Natural'Image(Msg_Part_Len)
-                          );
+        Ada.Text_IO.Put_Line("IRC.Proto : " & Ascii.LF &
+                               "Message : " & Msg & Ascii.LF &
+                               "Msg_Len : " & Natural'Image(Msg_Len) & Ascii.LF &
+                               "Cursor 1: " & Natural'Image(Msg_Cursor_1) & Ascii.LF &
+                               "Cursor 2: " & Natural'Image(Msg_Cursor_2) & Ascii.LF &
+                               "Part    : -" & Msg(Msg_Cursor_1..Msg_Cursor_1 + (Msg_Part_Len - 1)) & "-" & Ascii.LF &
+                               "Part_Len: " & Natural'Image(Msg_Part_Len)
+                            );
       
       -- Check if cursor is out of bounds
       if Msg_Cursor_2 > Msg_Len then
@@ -98,7 +95,11 @@ package body IRC.Proto is
       end if;
       
       -- Set the part
-      Msg_Part_Str(1..Msg_Part_Len) := Msg(Msg_Cursor_1..Msg_Cursor_1 + (Msg_Part_Len - 1));
+      declare
+         Part : String := Msg(Msg_Cursor_1..Msg_Cursor_1 + (Msg_Part_Len - 1));
+      begin
+         Msg_Part_Str(1..Msg_Part_Len) := Part;
+      end;
       
       Ada.Text_IO.Put_Line("IRC.Proto: Next_Part: " & Msg_Part_Str);
       
@@ -118,4 +119,9 @@ package body IRC.Proto is
          raise Bad;
       end if;
    end Next_Part;
+   -- Function to return the last fetched part
+   function Get_Part return String Is
+   begin
+      return Msg_Part_Str(1..Msg_Part_Len);
+   end Get_Part;
 end IRC.Proto;
