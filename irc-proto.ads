@@ -1,13 +1,18 @@
+with Ada.Characters.Latin_1;
+
 generic
 package IRC.Proto is
    Part_Max_Len : Natural := 5000;
    First_Pass   : Boolean := True;
 
    Msg_Len      : Natural := 0;
-   Msg_Cursor_1 : Natural := 0;
-   Msg_Cursor_2 : Natural := 0;
+   Msg_Marker_1 : Natural := 0;
+   Msg_Marker_2 : Natural := 0;
    Msg_Part_Str : String(1..Part_Max_Len);
    Msg_Part_Len : Natural := 0;
+
+   -- Procedure to parse a message
+   procedure Parse_Message (Msg : String);
 
    -- Procedure to set the first part of the IRC message
    procedure First_Part (Msg : String);
@@ -25,4 +30,7 @@ package IRC.Proto is
    -- Function to get the last fetched part
    function Get_Part return String;
    Bad : exception;
+
+private
+   package Ascii_L1 renames Ada.Characters.Latin_1;
 end IRC.Proto;

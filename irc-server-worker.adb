@@ -80,77 +80,81 @@ package body IRC.Server.Worker is
                -- Print line
                Debug ( "Client message: " & Msg(Msg'First..Msg_Len) );
                
-               -- Get first part
-               Parser.First_Part(Msg);
+               -- Test Parser
+               Parser.Parse_Message(Msg);
                
-               Debug ( "Part: *" & Parser.Msg_Part_Str & "*" );
-               declare
-                  Command : String := Parser.Msg_Part_Str(1..Parser.Msg_Part_Len);
-               begin
-                  -- Quit if the client qants to
-                  if Command = "QUIT" then
-                     Parser.Next_Part(Msg         => Msg,
-                                      Empty_Valid => True,
-                                      Eat_Colon   => True,
-                                      To_End      => True);
-                     Debug ("Client quit: " & Parser.Msg_Part_Str);
-                     exit Event_Loop;
-                  end if;
-                  
-                  -- Start IRC processing
-                  if not U.ConnRegd then
-                     
-                     -- TODO: Check for password
-                     if ( Command = "PASS" ) and (Serv_Pass = True) then
-                        Debug ("Recieved PASS but we don't do anything with it yet.");
-                     end if;
-                     -- Check for nickname
-                     --      Command: NICK
-                     --   Parameters: <nickname> [ <hopcount> ]
-                     if ( Command = "NICK" ) and ( not Nick_Sent ) then
-                        
-                        -- Get nick
-                        Parser.Next_Part(Msg);
-                        --Parser.Put_Part(URef.Username);
-                        U.Nickname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
-                        Debug ("Got nickname: " & U.Nickname);
-                        
-                        Nick_Sent := True;
-                     end if;
-                     -- Check for username
-                     --      Command: USER
-                     --   Parameters: <username> <hostname> <servername> <realname>
-                     if ( Command = "USER" ) and ( Nick_Sent ) then
-                        
-                        -- Get username
-                        Parser.Next_Part(Msg);
-                        U.Username(1..Parser.Msg_Part_Len) := Parser.Get_Part;
-                        Debug ("Got username: " & U.Username);
-                        
-                        -- Get hostname
-                        Parser.Next_Part(Msg, True);
-                        U.Hostname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
-                        Debug ("Got hostname: " & U.Hostname);
-                                    
-                        -- Get servname
-                        Parser.Next_Part(Msg, True);
-                        U.Servname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
-                        Debug ("Got servname: " & U.Servname);
-                                    
-                        -- Get realname
-                        Parser.Next_Part(Msg       => Msg,
-                                         Eat_Colon => True,
-                                         To_End    => True);
-                        U.Realname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
-                        Debug ("Got realname: " & U.Realname);
-                        
-                        U.ConnRegd := True;
-                     end if;
-                  else
-                     -- No-op for now
-                     null;
-                  end if;
-               end;
+               
+--                 -- Get first part
+--                 Parser.First_Part(Msg);
+--                 
+--                 Debug ( "Part: *" & Parser.Msg_Part_Str & "*" );
+--                 declare
+--                    Command : String := Parser.Msg_Part_Str(1..Parser.Msg_Part_Len);
+--                 begin
+--                    -- Quit if the client qants to
+--                    if Command = "QUIT" then
+--                       Parser.Next_Part(Msg         => Msg,
+--                                        Empty_Valid => True,
+--                                        Eat_Colon   => True,
+--                                        To_End      => True);
+--                       Debug ("Client quit: " & Parser.Msg_Part_Str);
+--                       exit Event_Loop;
+--                    end if;
+--                    
+--                    -- Start IRC processing
+--                    if not U.ConnRegd then
+--                       
+--                       -- TODO: Check for password
+--                       if ( Command = "PASS" ) and (Serv_Pass = True) then
+--                          Debug ("Recieved PASS but we don't do anything with it yet.");
+--                       end if;
+--                       -- Check for nickname
+--                       --      Command: NICK
+--                       --   Parameters: <nickname> [ <hopcount> ]
+--                       if ( Command = "NICK" ) and ( not Nick_Sent ) then
+--                          
+--                          -- Get nick
+--                          Parser.Next_Part(Msg);
+--                          --Parser.Put_Part(URef.Username);
+--                          U.Nickname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
+--                          Debug ("Got nickname: " & U.Nickname);
+--                          
+--                          Nick_Sent := True;
+--                       end if;
+--                       -- Check for username
+--                       --      Command: USER
+--                       --   Parameters: <username> <hostname> <servername> <realname>
+--                       if ( Command = "USER" ) and ( Nick_Sent ) then
+--                          
+--                          -- Get username
+--                          Parser.Next_Part(Msg);
+--                          U.Username(1..Parser.Msg_Part_Len) := Parser.Get_Part;
+--                          Debug ("Got username: " & U.Username);
+--                          
+--                          -- Get hostname
+--                          Parser.Next_Part(Msg, True);
+--                          U.Hostname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
+--                          Debug ("Got hostname: " & U.Hostname);
+--                                      
+--                          -- Get servname
+--                          Parser.Next_Part(Msg, True);
+--                          U.Servname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
+--                          Debug ("Got servname: " & U.Servname);
+--                                      
+--                          -- Get realname
+--                          Parser.Next_Part(Msg       => Msg,
+--                                           Eat_Colon => True,
+--                                           To_End    => True);
+--                          U.Realname(1..Parser.Msg_Part_Len) := Parser.Get_Part;
+--                          Debug ("Got realname: " & U.Realname);
+--                          
+--                          U.ConnRegd := True;
+--                       end if;
+--                    else
+--                       -- No-op for now
+--                       null;
+--                    end if;
+--                 end;
                
                <<Next_Event>>
                Ctr := Ctr + 1;
